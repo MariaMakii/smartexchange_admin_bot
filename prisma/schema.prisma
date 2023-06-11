@@ -1,0 +1,192 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = "postgresql://postgres:123@localhost:5432/raccoon?schema=public"
+}
+
+enum Role {
+  ADMIN
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+model User {
+  id                        Int                         @id @default(autoincrement())
+  username                  String                      @unique
+  password                  String
+  name                      String                      @db.VarChar(255)
+  surname                   String
+  picture                   String?
+  phoneNumber               String
+  email                     String?                     @unique @db.VarChar(255)
+  dateOfBirth               DateTime?
+  dateOfRegistration        DateTime                    @default(now())
+  role                      Role                        @default(LOW)
+  points                    Int                         @default(0)
+  purchases                 Purchase[]
+  usersToPosts              UserToPost[]
+  disposals                 Disposal[]
+  collectionPointWorkingDay CollectionPointWorkingDay[]
+}
+
+model Post {
+  id           Int          @id @default(autoincrement())
+  title         String?
+  text         String
+  picture       String?
+  date         DateTime
+  usersToPosts UserToPost[]
+}
+
+model UserToPost {
+  id     Int     @id @default(autoincrement())
+  viewed Boolean
+  post   Post    @relation(fields: [postId], references: [id])
+  postId Int
+  user   User    @relation(fields: [userId], references: [id])
+  userId Int
+  read    Boolean
+
+  @@unique([postId, userId])
+}
+
+model Company {
+  id            Int          @id @default(autoincrement())
+  name          String       @unique
+  logo          String
+  bio           String
+  promotions    Promotion[]
+  branches      Branch[]
+  companyType   CompanyType? @relation(fields: [companyTypeId], references: [id])
+  companyTypeId Int?
+}
+
+model CompanyType {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  companies Company[]
+}
+
+model Branch {
+  id               Int                @id @default(autoincrement())
+  address          String
+  company          Company            @relation(fields: [companyId], references: [id])
+  companyId        Int
+  branchWorkingDay BranchWorkingDay[]
+}
+
+model BranchWorkingDay {
+  id              Int       @id @default(autoincrement())
+  dayOfWeek       DayOfWeek
+  openingTime     DateTime
+  closingTime     DateTime
+  collectionPoint Branch    @relation(fields: [branchId], references: [id])
+  branchId        Int
+
+  @@unique([branchId, dayOfWeek])
+}
+
+model Material {
+  id                      Int                       @id @default(autoincrement())
+  name                    String
+  measure                 String
+  points                  Int
+  materialCollectionPoint MaterialCollectionPoint[]
+  batches                 Batch[]
+}
+
+model CollectionPoint {
+  id                        Int                         @id @default(autoincrement())
+  address                   String
+  materialCollectionPoint   MaterialCollectionPoint[]
+  collectionPointWorkingDay CollectionPointWorkingDay[]
+  batches                   Batch[]
+}
+
+model CollectionPointWorkingDay {
+  id                Int             @id @default(autoincrement())
+  dayOfWeek         DayOfWeek
+  openingTime       DateTime
+  closingTime       DateTime
+  collectionPoint   CollectionPoint @relation(fields: [collectionPointId], references: [id])
+  collectionPointId Int
+  user              User            @relation(fields: [userId], references: [id])
+  userId            Int
+  disposals         Disposal[]
+}
+
+model MaterialCollectionPoint {
+  id                Int             @id @default(autoincrement())
+  collectionPoint   CollectionPoint @relation(fields: [collectionPointId], references: [id])
+  collectionPointId Int
+  material          Material        @relation(fields: [materialId], references: [id])
+  materialId        Int
+
+  @@unique([collectionPointId, materialId])
+}
+
+model Promotion {
+  id               Int        @id @default(autoincrement())
+  name             String
+  description      String
+  points           Int
+  creationDate     DateTime   @default(now())
+  activationDate   DateTime
+  deactivationDate DateTime?
+  code             String
+  company          Company    @relation(fields: [companyId], references: [id])
+  companyId        Int
+  purchases        Purchase[]
+}
+
+model Purchase {
+  id          Int       @id @default(autoincrement())
+  user        User      @relation(fields: [userId], references: [id])
+  userId      Int
+  promotion   Promotion @relation(fields: [promotionId], references: [id])
+  promotionId Int
+  date        DateTime  @default(now())
+  used        Boolean   @default(false)
+}
+
+model Disposal {
+  id                          Int                        @id @default(autoincrement())
+  viewed                      Boolean
+  user                        User                       @relation(fields: [userId], references: [id])
+  userId                      Int
+  collectionPointWorkingDay   CollectionPointWorkingDay? @relation(fields: [collectionPointWorkingDayId], references: [id])
+  collectionPointWorkingDayId Int?
+  batches                     Batch[]
+
+  @@unique([userId])
+}
+
+model Batch {
+  id                Int             @id @default(autoincrement())
+  viewed            Boolean
+  date              DateTime
+  disposal          Disposal        @relation(fields: [disposalId], references: [id])
+  disposalId        Int
+  material          Material        @relation(fields: [materialId], references: [id])
+  materialId        Int
+  quantity          Int
+  points            Int             @default(0)
+  collectionPoint   CollectionPoint @relation(fields: [collectionPointId], references: [id])
+  collectionPointId Int
+
+  @@unique([disposalId, materialId])
+}
